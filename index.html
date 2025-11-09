@@ -646,6 +646,7 @@
             object-fit: contain;
             border: 2px solid #ff3366;
             border-radius: 5px;
+            transition: opacity 0.3s;
         }
         
         .close-modal {
@@ -656,10 +657,77 @@
             color: #fff;
             cursor: pointer;
             transition: color 0.3s;
+            z-index: 2001;
         }
         
         .close-modal:hover {
             color: #ff3366;
+        }
+        
+        .modal-nav-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(255, 51, 102, 0.8);
+            color: #fff;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            z-index: 2001;
+            user-select: none;
+        }
+        
+        .modal-nav-arrow:hover {
+            background-color: #ff3366;
+            transform: translateY(-50%) scale(1.1);
+        }
+        
+        .modal-nav-arrow:active {
+            transform: translateY(-50%) scale(0.95);
+        }
+        
+        .modal-nav-arrow.left {
+            left: 20px;
+        }
+        
+        .modal-nav-arrow.right {
+            right: 20px;
+        }
+        
+        .modal-counter {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 2001;
+        }
+        
+        @media (max-width: 768px) {
+            .modal-nav-arrow {
+                width: 40px;
+                height: 40px;
+                font-size: 20px;
+            }
+            
+            .modal-nav-arrow.left {
+                left: 10px;
+            }
+            
+            .modal-nav-arrow.right {
+                right: 10px;
+            }
         }
         
         /* Music Section */
@@ -1113,12 +1181,16 @@
         
         <section class="gallery-section" id="gallerySection">
             <div class="gallery-header">
-                <img src="https://i.postimg.cc/xdhLSzXM/503653975-18089838568724873-4136813263942878372-n.jpg" alt="Profile" class="profile-picture">
-                <div class="profile-info">
-                    <h2>Larivien</h2>
-                    <p>Cinema enthusiast | Movie lover</p>
-                </div>
-            </div>
+    <img src="https://i.postimg.cc/xdhLSzXM/503653975-18089838568724873-4136813263942878372-n.jpg" alt="Profile" class="profile-picture">
+    <div class="profile-info">
+        <h2>Larivien</h2>
+        <p>Cinema enthusiast | Movie lover</p>
+    </div>
+    <!-- NUOVO PULSANTE REFRESH -->
+    <button class="refresh-gallery-btn" id="refreshGalleryBtn" title="Refresh Gallery">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg>
+    </button>
+</div>
             
             <div class="gallery-stats">
                 <div class="stat">
@@ -1185,10 +1257,13 @@
     </div>
     
     <!-- Fullscreen Image Modal -->
-    <div class="image-modal" id="imageModal">
-        <span class="close-modal" id="closeModal">&times;</span>
-        <img src="" alt="" class="modal-image" id="modalImage">
-    </div>
+<div class="image-modal" id="imageModal">
+    <span class="close-modal" id="closeModal">&times;</span>
+    <button class="modal-nav-arrow left" id="prevImageBtn">&#10094;</button>
+    <img src="" alt="" class="modal-image" id="modalImage">
+    <button class="modal-nav-arrow right" id="nextImageBtn">&#10095;</button>
+    <div class="modal-counter" id="modalCounter">1 / 1</div>
+</div>
     
     <!-- Bottom Navigation -->
     <div class="bottom-nav">
@@ -1650,12 +1725,12 @@
         let currentY = 0;
         let initialX = 0;
         let initialY = 0;
+        let activeFilters = [];
         let isDragging = false;
         let currentCard = null;
         let totalSwipes = 0;
         let currentFilter = 'all';
         let activeTab = 'allMovies';
-        let activeFilters = [];
         
         // DOM elements
         const swipeSection = document.getElementById('swipeSection');
@@ -1708,6 +1783,16 @@
         const imageModal = document.getElementById('imageModal');
         const modalImage = document.getElementById('modalImage');
         const closeModal = document.getElementById('closeModal');
+        const prevImageBtn = document.getElementById('prevImageBtn');
+        const nextImageBtn = document.getElementById('nextImageBtn');
+        const modalCounter = document.getElementById('modalCounter');
+        
+        // Gallery navigation state
+        let galleryImages = [];
+        let currentImageIndex = 0;
+        let modalTouchStartX = 0;
+        let modalTouchEndX = 0;
+        const minSwipeDistance = 50;
         
         // Initialize the app
         function init() {
@@ -1886,7 +1971,10 @@ async function createGalleryItems() {
              return;
         }
 
-        imageUrls.forEach(imageUrl => {
+        // Salva le immagini nell'array globale per la navigazione
+        galleryImages = imageUrls;
+
+        imageUrls.forEach((imageUrl, index) => {
             const galleryItem = document.createElement('div');
             galleryItem.className = 'gallery-item';
 
@@ -1894,8 +1982,8 @@ async function createGalleryItems() {
                 <img src="${imageUrl}" alt="Gallery Image">
             `;
 
-            // Aggiungi l'evento per aprire l'immagine a schermo intero
-            galleryItem.addEventListener('click', () => openFullscreenImage(imageUrl, 'Gallery Image'));
+            // Aggiungi l'evento per aprire l'immagine a schermo intero con l'indice
+            galleryItem.addEventListener('click', () => openFullscreenImage(index));
 
             galleryGrid.appendChild(galleryItem);
         });
@@ -1929,15 +2017,89 @@ async function createGalleryItems() {
         }
         
         // Open image in fullscreen
-        function openFullscreenImage(imageSrc, altText) {
-            modalImage.src = imageSrc;
-            modalImage.alt = altText;
+        function openFullscreenImage(index) {
+            if (galleryImages.length === 0) return;
+            
+            currentImageIndex = index;
+            updateModalImage();
             imageModal.classList.add('active');
+        }
+        
+        // Update modal image
+        function updateModalImage() {
+            if (galleryImages.length === 0) return;
+            
+            modalImage.src = galleryImages[currentImageIndex];
+            modalImage.alt = 'Gallery Image';
+            modalCounter.textContent = `${currentImageIndex + 1} / ${galleryImages.length}`;
+            
+            // Show/hide navigation arrows
+            prevImageBtn.style.display = currentImageIndex > 0 ? 'flex' : 'none';
+            nextImageBtn.style.display = currentImageIndex < galleryImages.length - 1 ? 'flex' : 'none';
+        }
+        
+        // Navigate to previous image
+        function showPreviousImage() {
+            if (currentImageIndex > 0) {
+                currentImageIndex--;
+                updateModalImage();
+            }
+        }
+        
+        // Navigate to next image
+        function showNextImage() {
+            if (currentImageIndex < galleryImages.length - 1) {
+                currentImageIndex++;
+                updateModalImage();
+            }
         }
         
         // Close fullscreen image
         function closeFullscreenImage() {
             imageModal.classList.remove('active');
+        }
+        
+        // Handle touch start
+        function handleTouchStart(e) {
+            modalTouchStartX = e.touches[0].clientX;
+        }
+        
+        // Handle touch move
+        function handleTouchMove(e) {
+            modalTouchEndX = e.touches[0].clientX;
+        }
+        
+        // Handle touch end
+        function handleTouchEnd() {
+            const swipeDistance = modalTouchStartX - modalTouchEndX;
+            
+            if (Math.abs(swipeDistance) > minSwipeDistance) {
+                if (swipeDistance > 0) {
+                    // Swipe left - next image
+                    showNextImage();
+                } else {
+                    // Swipe right - previous image
+                    showPreviousImage();
+                }
+            }
+            
+            modalTouchStartX = 0;
+            modalTouchEndX = 0;
+        }
+        
+        // Handle keyboard navigation
+        function handleKeyboardNavigation(e) {
+            if (!imageModal.classList.contains('active')) return;
+            
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                showPreviousImage();
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                showNextImage();
+            } else if (e.key === 'Escape') {
+                closeFullscreenImage();
+            }
         }
         
         // Update statistics
@@ -2317,6 +2479,17 @@ async function createGalleryItems() {
             // Modal close button
             closeModal.addEventListener('click', closeFullscreenImage);
             
+            // Modal navigation buttons
+            prevImageBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showPreviousImage();
+            });
+            
+            nextImageBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showNextImage();
+            });
+            
             // Close modal when clicking outside the image
             imageModal.addEventListener('click', (e) => {
                 if (e.target === imageModal) {
@@ -2324,12 +2497,13 @@ async function createGalleryItems() {
                 }
             });
             
-            // Close modal with Escape key
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && imageModal.classList.contains('active')) {
-                    closeFullscreenImage();
-                }
-            });
+            // Touch events for swipe navigation
+            modalImage.addEventListener('touchstart', handleTouchStart, { passive: true });
+            modalImage.addEventListener('touchmove', handleTouchMove, { passive: true });
+            modalImage.addEventListener('touchend', handleTouchEnd);
+            
+            // Keyboard navigation
+            document.addEventListener('keydown', handleKeyboardNavigation);
             
             // Close filter dropdown when clicking outside
             document.addEventListener('click', (e) => {
