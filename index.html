@@ -830,11 +830,11 @@
         }
         
         .gift-letter {
-            font-size: 18px;
-            line-height: 1.8;
-            margin-bottom: 30px;
-            text-align: justify;
-        }
+    font-size: 18px;
+    line-height: 1.8;
+    margin-bottom: 30px;
+    text-align: left;
+}
         
         .gift-letter p {
             margin-bottom: 20px;
@@ -1863,40 +1863,47 @@
             return card;
         }
         
-        // Create gallery items
-function createGalleryItems() {
-    galleryGrid.innerHTML = '';
+        // Create gallery items by fetching from Google Sheets
+async function createGalleryItems() {
+    // !!! INCOLLA QUI IL LINK .CSV DEL TUO FOGLIO GOOGLE PUBBLICATO !!!
+    const sheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSXnrCCgyeapHwAZ3WmAuhbH4pCKkFR9hOloLWZ0Zm-IvarWWVbD0ycB4QLzxfN9AHDhexRD2DdnsqH/pub?output=csv';
 
-    // !!! MODIFICA I LINK QUI SOTTO CON I LINK DELLE TUE IMMAGINI !!!
-    const galleryImages = [
-        "https://i.postimg.cc/BZh1qMMt/IMG-20250323-090514-072.jpg",
-        "https://i.postimg.cc/y6mWxBBf/35b19b0b-1168-4ba4-aba0-559c4264db77.jpg",
-        "https://i.postimg.cc/3NP8k4kf/43482428-f05b-4a88-82bc-914f78b5e4d4.jpg",
-        "https://i.postimg.cc/W4XsMfDk/2cc295a0-b442-411b-bfe4-b35f04a49bf2.jpg",
-        "https://i.postimg.cc/pdhtFXtg/3f3ef145-032c-47ac-a47b-f86cdcb5609c.jpg",
-        "https://i.postimg.cc/05ChrJwz/e3f32d69-b05a-4069-bb52-1413d708c358.jpg",
-        "https://i.postimg.cc/L6wDsHNq/7362ebba-44e0-4cc7-8493-108d046d5997.jpg",
-        "https://i.postimg.cc/Zn0PTgNF/ad626f8e-1fc0-4a3b-beb6-0a69144cd69d.jpg",
-        "https://i.postimg.cc/W4jMDtr4/78156ac9-ed76-4bce-8069-039900b42006.jpg",
-        "https://i.postimg.cc/yW4DwryN/434b3561-42af-41c0-89bf-be6857d2091d.jpg",
-        "https://i.postimg.cc/fb2j6DtT/Immagine-2025-09-13-114000.png",
-        "https://i.postimg.cc/C1nDXDpm/Immagine-2025-09-13-114119.png",
-    ];
+    galleryGrid.innerHTML = '<p style="text-align: center;">Caricamento galleria...</p>'; // Messaggio di caricamento
 
-    galleryImages.forEach(imageUrl => {
-        const galleryItem = document.createElement('div');
-        galleryItem.className = 'gallery-item';
+    try {
+        const response = await fetch(sheetURL);
+        if (!response.ok) {
+            throw new Error('Errore di rete o foglio non raggiungibile.');
+        }
+        
+        const csvText = await response.text();
+        const imageUrls = csvText.split('\n').map(url => url.trim()).filter(url => url); // Divide per riga, pulisce e rimuove righe vuote
 
-        // Nota: La visualizzazione dei "likes" è stata rimossa perché non più collegata ai film.
-        galleryItem.innerHTML = `
-            <img src="${imageUrl}" alt="Gallery Image">
-        `;
+        galleryGrid.innerHTML = ''; // Pulisce il messaggio di caricamento
 
-        // Aggiungi l'evento per aprire l'immagine a schermo intero
-        galleryItem.addEventListener('click', () => openFullscreenImage(imageUrl, 'Gallery Image'));
+        if (imageUrls.length === 0) {
+             galleryGrid.innerHTML = '<p style="text-align: center;">Nessuna immagine da mostrare.</p>';
+             return;
+        }
 
-        galleryGrid.appendChild(galleryItem);
-    });
+        imageUrls.forEach(imageUrl => {
+            const galleryItem = document.createElement('div');
+            galleryItem.className = 'gallery-item';
+
+            galleryItem.innerHTML = `
+                <img src="${imageUrl}" alt="Gallery Image">
+            `;
+
+            // Aggiungi l'evento per aprire l'immagine a schermo intero
+            galleryItem.addEventListener('click', () => openFullscreenImage(imageUrl, 'Gallery Image'));
+
+            galleryGrid.appendChild(galleryItem);
+        });
+
+    } catch (error) {
+        console.error('Impossibile caricare le immagini dalla galleria:', error);
+        galleryGrid.innerHTML = '<p style="text-align: center; color: #ff5588;">Oops! Non è stato possibile caricare le immagini.</p>';
+    }
 }
         
         // Create music items
